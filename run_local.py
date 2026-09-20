@@ -307,12 +307,20 @@ def api_task_update_status(task_id):
 def get_unique_spocs():
     names = set()
     emails = set()
+    
+    def add_val(val, target_set):
+        if val:
+            s_val = str(val).strip()
+            if s_val.lower() != 'nan' and s_val != '':
+                target_set.add(s_val)
+
     for t in Task.all():
-        if t.spoc_name: names.add(t.spoc_name)
-        if t.spoc_email: emails.add(t.spoc_email)
+        add_val(t.spoc_name, names)
+        add_val(t.spoc_email, emails)
     for s in TaskStep.all():
-        if s.spoc_name: names.add(s.spoc_name)
-        if s.spoc_email: emails.add(s.spoc_email)
+        add_val(s.spoc_name, names)
+        add_val(s.spoc_email, emails)
+        
     return sorted(list(names)), sorted(list(emails))
 
 @app.route('/tasks/new', methods=['GET', 'POST'])
