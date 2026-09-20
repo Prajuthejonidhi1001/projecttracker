@@ -1,0 +1,141 @@
+{% extends "simple_base.html" %}
+
+{% block title %}Tasks - Project Scheduler{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const searchInput = document.getElementById("liveSearchInput");
+        const tableRows = document.querySelectorAll("tbody tr");
+
+        searchInput.addEventListener("input", function() {
+            const query = searchInput.value.toLowerCase();
+            
+            tableRows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                if (text.includes(query)) {
+                    row.style.display = "";
+                } else {
+                    row.style.display = "none";
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-list-task"></i> Tasks</h1>
+    <a href="{{ url_for('task_new') }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> New Task
+    </a>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('task_list') }}" class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-select">
+                    <option value="">All Statuses</option>
+                    <option value="draft" {% if status_filter == 'draft' %}selected{% endif %}>Draft</option>
+                    <option value="not_started" {% if status_filter == 'not_started' %}selected{% endif %}>Not Started</option>
+                    <option value="in_progress" {% if status_filter == 'in_progress' %}selected{% endif %}>In Progress</option>
+                    <option value="on_hold" {% if status_filter == 'on_hold' %}selected{% endif %}>On Hold</option>
+                    <option value="completed" {% if status_filter == 'completed' %}selected{% endif %}>Completed</option>
+                    <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Priority</label>
+                <select name="priority" class="form-select">
+                    <option value="">All Priorities</option>
+                    <option value="low" {% if priority_filter == 'low' %}selected{% endif %}>Low</option>
+                    <option value="medium" {% if priority_filter == 'medium' %}selected{% endif %}>Medium</option>
+                    <option value="high" {% if priority_filter == 'high' %}selected{% endif %}>High</option>
+                    <option value="critical" {% if priority_filter == 'critical' %}selected{% endif %}>Critical</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Search</label>
+                <input type="text" name="search" id="liveSearchInput" class="form-control" placeholder="Search tasks instantly..." value="{{ search }}">
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-secondary w-100">
+                    <i class="bi bi-funnel"></i> Filter
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Tasks List -->
+<div class="card">
+    <div class="card-body">
+        {% if tasks %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Status</th>
+                        <th>Priority</th>
+                        <th>Progress</th>
+                        <th>Start Date</th>
+                        <th>Due Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for task in tasks %}
+                    <tr class="{% if task.status == 'completed' %}task-completed{% endif %}">
+                        <td>
+                            <a href="{{ url_for('task_detail', task_id=task.id) }}" class="text-decoration-none">
+                                <strong>{{ task.title }}</strong>
+                            </a>
+                            {% if task.description %}
+                            <br><small class="text-muted">{{ task.description[:60] }}{% if task.description|length > 60 %}...{% endif %}</small>
+                            {% endif %}
+                        </td>
+                        <td><span class="badge bg-{{ task.status|status_badge }}">{{ task.status|replace('_', ' ')|title }}</span></td>
+                        <td><span class="badge bg-{{ task.priority|priority_badge }}">{{ task.priority|upper }}</span></td>
+                        <td>
+                            <div class="progress" style="height: 20px;">
+                                <div class="progress-bar" role="progressbar" style="width: {{ task.progress_percent or 0 }}%">
+                                    {{ task.progress_percent or 0 }}%
+                                </div>
+                            </div>
+                        </td>
+                        <td>{{ task.start_date|date if task.start_date else '-' }}</td>
+                        <td>
+                            {{ task.due_date|date if task.due_date else '-' }}
+                            {% if task.is_overdue %}
+                                <span class="badge bg-danger ms-1">Overdue</span>
+                            {% elif task.is_due_soon %}
+                                <span class="badge bg-warning text-dark ms-1">Due Soon</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{{ url_for('task_detail', task_id=task.id) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <a href="{{ url_for('task_edit', task_id=task.id) }}" class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-inbox" style="font-size: 3rem; color: #ccc;"></i>
+            <p class="text-muted mt-3">No tasks found. <a href="{{ url_for('task_new') }}">Create your first task</a>.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

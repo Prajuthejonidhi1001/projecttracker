@@ -1,0 +1,189 @@
+:root {
+  --sidebar-width: 250px;
+  --sidebar-bg: #1f2937;
+  --sidebar-fg: #d1d5db;
+  --sidebar-active: #111827;
+  --brand: #2563eb;
+  --content-bg: #f3f4f6;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background: var(--content-bg);
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  color: #1f2937;
+}
+
+/* Layout */
+.app-shell { display: flex; min-height: 100vh; }
+.app-sidebar {
+  width: var(--sidebar-width);
+  background: var(--sidebar-bg);
+  color: var(--sidebar-fg);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1030;
+  transition: transform .2s ease;
+}
+.app-main {
+  flex: 1;
+  margin-left: var(--sidebar-width);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.app-topbar {
+  height: 60px;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  padding: 0 1.25rem;
+  position: sticky;
+  top: 0;
+  z-index: 1020;
+}
+.app-content { padding: 1.5rem; flex: 1; }
+
+@media (max-width: 991.98px) {
+  .app-sidebar { transform: translateX(-100%); }
+  .app-sidebar.open { transform: translateX(0); }
+  .app-main { margin-left: 0; }
+}
+
+/* Sidebar internals */
+.sidebar-brand {
+  padding: 1.1rem 1.25rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #fff;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  letter-spacing: .2px;
+}
+.sidebar-nav { flex: 1; padding: .75rem 0; overflow-y: auto; }
+.sidebar-nav .nav-link {
+  color: var(--sidebar-fg);
+  padding: .6rem 1.25rem;
+  font-size: .925rem;
+  border-left: 3px solid transparent;
+  text-decoration: none;
+  display: block;
+}
+.sidebar-nav .nav-link:hover { background: rgba(255,255,255,.06); color: #fff; }
+.sidebar-nav .nav-link.active {
+  background: var(--sidebar-active);
+  color: #fff;
+  border-left-color: #3b82f6;
+}
+.sidebar-footer { padding: 1rem; border-top: 1px solid rgba(255,255,255,.08); }
+
+/* Cards & tables */
+.stat-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: .5rem;
+  padding: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.stat-card .stat-icon {
+  width: 48px; height: 48px;
+  border-radius: .5rem;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem;
+  color: #fff;
+}
+.stat-card .stat-value { font-size: 1.6rem; font-weight: 700; line-height: 1.1; }
+.stat-card .stat-label { color: #6b7280; font-size: .85rem; }
+
+.card { border: 1px solid #e5e7eb; border-radius: .5rem; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+.card-header {
+  background: #f9fafb;
+  font-weight: 600;
+  border-bottom: 1px solid #e5e7eb;
+  padding: .75rem 1rem;
+}
+
+.table thead th {
+  font-size: .78rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: #6b7280;
+  border-bottom-width: 1px;
+}
+
+.badge { font-weight: 500; }
+
+.progress { height: .6rem; }
+
+/* Forms */
+.form-label { font-weight: 500; font-size: .875rem; }
+.help-text { color: #6b7280; font-size: .8rem; }
+
+/* Login page */
+.login-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+  padding: 1rem;
+}
+.login-card { width: 100%; max-width: 420px; }
+.brand-mark {
+  width: 52px; height: 52px;
+  border-radius: .75rem;
+  background: #2563eb;
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.6rem;
+}
+
+/* Calendar */
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.cal-cell {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: .35rem;
+  min-height: 96px;
+  padding: .35rem;
+  font-size: .78rem;
+}
+.cal-cell .cal-day-num { font-weight: 600; color: #374151; }
+.cal-cell.other-month { background: #f9fafb; color: #9ca3af; }
+.cal-event {
+  display: block;
+  border-radius: .25rem;
+  padding: 1px 4px;
+  margin-top: 2px;
+  font-size: .72rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #fff;
+  text-decoration: none;
+  cursor: pointer;
+}
+.cal-event.pending { background: #f59e0b; }
+.cal-event.in_progress { background: #2563eb; }
+.cal-event.completed { background: #16a34a; }
+.cal-event.overdue { background: #dc2626; }
+
+/* Scheduler status */
+.status-pill { font-size: .85rem; }
+
+.table-responsive { overflow-x: auto; }
+
+.font-2 { font-size: 1.4rem; }
+
+@media (max-width: 767.98px) {
+  .app-content { padding: 1rem; }
+  .stat-card .stat-value { font-size: 1.3rem; }
+}

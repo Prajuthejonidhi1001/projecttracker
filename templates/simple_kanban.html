@@ -1,0 +1,203 @@
+{% extends "simple_base.html" %}
+
+{% block title %}Kanban Board - Project Scheduler{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-6">
+        <h1>Kanban Board</h1>
+    </div>
+    <div class="col-md-4">
+        <input type="text" id="kanbanSearchInput" class="form-control form-control-lg" placeholder="Search kanban tasks...">
+    </div>
+    <div class="col-md-2 text-end">
+        <a href="{{ url_for('task_new') }}" class="btn btn-primary btn-lg w-100">
+            <i class="bi bi-plus-circle"></i> New Task
+        </a>
+    </div>
+</div>
+
+<style>
+    .kanban-board {
+        display: flex;
+        gap: 1.5rem;
+        overflow-x: auto;
+        padding-bottom: 1rem;
+        align-items: flex-start;
+    }
+    .kanban-column {
+        flex: 0 0 320px;
+        background-color: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 1.25rem;
+        min-height: 500px;
+        display: flex;
+        flex-direction: column;
+    }
+    .kanban-column-header {
+        font-weight: 700;
+        font-size: 1.1rem;
+        margin-bottom: 1.25rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 2px solid #e2e8f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    .kanban-tasks {
+        flex: 1;
+        min-height: 50px;
+    }
+    .kanban-task {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        color: var(--text-dark);
+        border-radius: 10px;
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        cursor: grab;
+        border-left: 4px solid var(--primary);
+        transition: all 0.3s ease;
+    }
+    .kanban-task:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+        border-color: #cbd5e1;
+    }
+    .kanban-task:active {
+        cursor: grabbing;
+        transform: scale(0.98);
+    }
+    .kanban-task.priority-high { border-left-color: #ef4444; }
+    .kanban-task.priority-medium { border-left-color: #f59e0b; }
+    .kanban-task.priority-low { border-left-color: #10b981; }
+    .kanban-task.priority-critical { border-left-color: #dc2626; box-shadow: 0 0 5px rgba(220, 38, 38, 0.3); }
+    
+    .kanban-task a { color: var(--text-dark) !important; font-weight: 600; font-size: 1.05rem; }
+    
+    .task-completed {
+        text-decoration: line-through;
+        opacity: 0.6;
+    }
+    
+    .sortable-ghost {
+        opacity: 0.5;
+        background-color: #e2e8f0;
+    }
+</style>
+
+<div class="kanban-board">
+    {% set columns = [
+        ('draft', 'Draft', 'secondary'),
+        ('not_started', 'To Do', 'info'),
+        ('in_progress', 'In Progress', 'primary'),
+        ('on_hold', 'On Hold', 'warning'),
+        ('completed', 'Done', 'success')
+    ] %}
+    
+    {% for status_id, title, color in columns %}
+    <div class="kanban-column">
+        <div class="kanban-column-header text-{{ color }}">
+            <span>{{ title }}</span>
+            <span class="badge bg-{{ color }} rounded-pill" id="count-{{ status_id }}">{{ grouped_tasks[status_id]|length }}</span>
+        </div>
+        <div class="kanban-tasks" id="col-{{ status_id }}" data-status="{{ status_id }}">
+            {% for task in grouped_tasks[status_id] %}
+            <div class="kanban-task priority-{{ task.priority }} {% if task.status == 'completed' %}task-completed{% endif %}" data-id="{{ task.id }}">
+                <div class="d-flex justify-content-between">
+                    <h6 class="mb-1"><a href="{{ url_for('task_detail', task_id=task.id) }}" class="text-decoration-none text-dark">{{ task.title }}</a></h6>
+                </div>
+                <small class="text-muted d-block mt-2">
+                    <i class="bi bi-clock"></i> {{ task.due_date|date if task.due_date else 'No due date' }}
+                    {% if task.is_overdue %}
+                        <span class="badge bg-danger ms-1">Overdue</span>
+                    {% elif task.is_due_soon %}
+                        <span class="badge bg-warning text-dark ms-1">Due Soon</span>
+                    {% endif %}
+                </small>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Sortable JS for Drag & Drop -->
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Initialize Sortable on all columns
+        const columns = document.querySelectorAll('.kanban-tasks');
+        columns.forEach(col => {
+            new Sortable(col, {
+                group: 'kanban',
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                onEnd: function (evt) {
+                    const itemEl = evt.item;
+                    const taskId = itemEl.getAttribute('data-id');
+                    const newStatus = evt.to.getAttribute('data-status');
+                    
+                    if (evt.from !== evt.to) {
+                        // Call API to update task status
+                        fetch(`/api/tasks/${taskId}/update_status`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ status: newStatus })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if(data.success) {
+                                // Update counts
+                                updateCounts();
+                            } else {
+                                alert('Failed to update status');
+                                window.location.reload();
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            alert('Failed to update task status.');
+                        });
+                    }
+                }
+            });
+        });
+        
+        function updateCounts() {
+            document.querySelectorAll('.kanban-column').forEach(col => {
+                const statusId = col.querySelector('.kanban-tasks').getAttribute('data-status');
+                const count = col.querySelectorAll('.kanban-task:not([style*="display: none"])').length;
+                document.getElementById('count-' + statusId).innerText = count;
+            });
+        }
+        
+        // Live search logic for Kanban
+        const searchInput = document.getElementById("kanbanSearchInput");
+        const allTasks = document.querySelectorAll(".kanban-task");
+
+        searchInput.addEventListener("input", function() {
+            const query = searchInput.value.toLowerCase();
+            
+            allTasks.forEach(task => {
+                const text = task.textContent.toLowerCase();
+                if (text.includes(query)) {
+                    task.style.display = "";
+                } else {
+                    task.style.display = "none";
+                }
+            });
+            // Update column counts after filtering
+            updateCounts();
+        });
+    });
+</script>
+{% endblock %}

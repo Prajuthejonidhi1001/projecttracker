@@ -1,0 +1,218 @@
+{% extends "simple_base.html" %}
+
+{% block title %}Dashboard - Project Scheduler{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Dashboard</h1>
+
+<!-- Stats Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card card-stat">
+            <div class="card-body">
+                <h6 class="text-muted">My Tasks</h6>
+                <h2 class="mb-0" id="stat-total-tasks">{{ total_tasks }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card" style="border-left: 4px solid #198754;">
+            <div class="card-body">
+                <h6 class="text-muted">My Subtasks</h6>
+                <h2 class="mb-0" id="stat-total-steps">{{ total_steps }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card" style="border-left: 4px solid #dc3545;">
+            <div class="card-body">
+                <h6 class="text-muted">Overdue</h6>
+                <h2 class="mb-0" id="stat-overdue">{{ overdue_count }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card" style="border-left: 4px solid #ffc107;">
+            <div class="card-body">
+                <h6 class="text-muted">In Progress</h6>
+                <h2 class="mb-0" id="stat-in-progress">{{ task_status_counts.get('in_progress', 0) }}</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Recent Tasks -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header border-bottom">
+                <h5 class="mb-0 text-primary fw-bold"><i class="bi bi-list-task"></i> Recent Tasks</h5>
+            </div>
+            <div class="card-body p-0">
+                {% if recent_tasks %}
+                <div class="list-group list-group-flush">
+                    {% for task in recent_tasks %}
+                    <a href="{{ url_for('task_detail', task_id=task.id) }}" class="list-group-item list-group-item-action task-item {% if task.status == 'completed' %}task-completed{% endif %}">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="mb-1">{{ task.title }}</h6>
+                                <small class="text-muted">
+                                    <span class="badge bg-{{ task.priority|priority_badge }}">{{ task.priority|upper }}</span>
+                                    <span class="badge bg-{{ task.status|status_badge }}">{{ task.status|replace('_', ' ')|title }}</span>
+                                    {% if task.is_overdue %}
+                                        <span class="badge bg-danger ms-1">Overdue</span>
+                                    {% elif task.is_due_soon %}
+                                        <span class="badge bg-warning text-dark ms-1">Due Soon</span>
+                                    {% endif %}
+                                </small>
+                            </div>
+                            <small class="text-muted">{{ task.created_at|datetime }}</small>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="p-4">
+                    <p class="text-muted">No tasks yet. <a href="{{ url_for('task_new') }}">Create your first task</a>.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Overdue Tasks -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header border-bottom">
+                <h5 class="mb-0 text-danger fw-bold"><i class="bi bi-exclamation-triangle"></i> Overdue Subtasks</h5>
+            </div>
+            <div class="card-body p-0">
+                {% if overdue_steps %}
+                <div class="list-group list-group-flush">
+                    {% for step in overdue_steps %}
+                    <div class="list-group-item">
+                        <h6 class="mb-1 text-danger">{{ step.title }}</h6>
+                        <small class="text-muted">
+                            <i class="bi bi-calendar-x"></i> Due: {{ step.due_datetime|datetime }}
+                        </small>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="p-4">
+                    <p class="text-success mb-0"><i class="bi bi-check-circle"></i> No overdue subtasks!</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header border-bottom">
+                <h5 class="mb-0 text-info fw-bold"><i class="bi bi-pie-chart"></i> Task Distribution</h5>
+            </div>
+            <div class="card-body" style="height: 300px; display: flex; justify-content: center;">
+                <canvas id="taskStatusChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- My Pending Subtasks -->
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header border-bottom">
+                <h5 class="mb-0 text-warning fw-bold"><i class="bi bi-person-workspace"></i> My Pending Subtasks (Next 7 Days)</h5>
+            </div>
+            <div class="card-body">
+                {% if upcoming_steps %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Subtask</th>
+                                <th>Status</th>
+                                <th>Due Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for step in upcoming_steps %}
+                            <tr>
+                                <td>{{ step.title }}</td>
+                                <td><span class="badge bg-{{ step.status|status_badge }}">{{ step.status|replace('_', ' ')|title }}</span></td>
+                                <td>{{ step.due_datetime|datetime }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted">No upcoming subtasks in the next 7 days.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Real-time Dashboard Updates
+    function fetchDashboardStats() {
+        fetch('/api/dashboard_stats')
+            .then(response => response.json())
+            .then(data => {
+                // Update stats without page reload
+                document.getElementById('stat-total-tasks').textContent = data.total_tasks;
+                document.getElementById('stat-total-steps').textContent = data.total_steps;
+                document.getElementById('stat-overdue').textContent = data.overdue_count;
+                document.getElementById('stat-in-progress').textContent = data.in_progress;
+            })
+            .catch(error => console.error('Error fetching stats:', error));
+    }
+
+    // Refresh stats every 15 seconds
+    setInterval(fetchDashboardStats, 15000);
+
+    // Render Chart
+    const ctx = document.getElementById('taskStatusChart').getContext('2d');
+    const taskStatusChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Draft', 'In Progress', 'Completed', 'Cancelled'],
+            datasets: [{
+                label: 'Tasks by Status',
+                data: [
+                    {{ task_status_counts.get('draft', 0) }},
+                    {{ task_status_counts.get('in_progress', 0) }},
+                    {{ task_status_counts.get('completed', 0) }},
+                    {{ task_status_counts.get('cancelled', 0) }}
+                ],
+                backgroundColor: [
+                    '#64748b',
+                    '#f59e0b',
+                    '#10b981',
+                    '#ef4444'
+                ],
+                borderWidth: 0,
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: { color: '#1e293b' }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

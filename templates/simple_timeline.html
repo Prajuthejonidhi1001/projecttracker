@@ -1,0 +1,374 @@
+{% extends "simple_base.html" %}
+
+{% block title %}Timeline - Project Scheduler{% endblock %}
+
+{% block content %}
+<style>
+/* Custom Timeline Styles */
+.timeline-container {
+    display: flex;
+    height: 600px;
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--card-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+}
+
+.timeline-left {
+    width: 300px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--border-light);
+    display: flex;
+    flex-direction: column;
+    background: rgba(255, 255, 255, 0.4);
+}
+
+.timeline-right {
+    flex-grow: 1;
+    overflow-x: auto;
+    overflow-y: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+.tl-header-row {
+    display: flex;
+    border-bottom: 1px solid var(--border-light);
+    background: rgba(255, 255, 255, 0.6);
+    flex-shrink: 0;
+    height: 40px;
+}
+
+.tl-body {
+    flex-grow: 1;
+    overflow-y: scroll; /* Allow scrolling */
+    position: relative;
+}
+
+/* Left Pane Items */
+.tl-header-cell-left {
+    padding: 10px 15px;
+    font-weight: 700;
+    color: var(--text-dark);
+}
+
+.tl-row-left {
+    height: 40px;
+    display: flex;
+    align-items: center;
+    padding: 0 15px;
+    border-bottom: 1px solid var(--border-light);
+    cursor: pointer;
+    user-select: none;
+    background: transparent;
+    transition: background 0.2s;
+    font-weight: 600;
+}
+
+.tl-row-left:hover {
+    background: rgba(255,255,255,0.8);
+}
+
+.tl-row-left.is-subtask {
+    padding-left: 40px;
+    font-size: 0.9em;
+    font-weight: 400;
+    color: var(--text-muted);
+}
+
+.tl-toggle {
+    margin-right: 8px;
+    width: 14px;
+    display: inline-block;
+    color: var(--text-muted);
+}
+
+/* Right Pane Grid */
+.tl-grid-row {
+    height: 40px;
+    border-bottom: 1px solid var(--border-light);
+    position: relative;
+}
+
+.tl-grid-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    display: flex;
+    pointer-events: none;
+}
+
+.tl-grid-cell {
+    width: 60px;
+    height: 100%;
+    border-right: 1px solid var(--border-light);
+    flex-shrink: 0;
+}
+
+.tl-header-cell-right {
+    width: 60px;
+    flex-shrink: 0;
+    text-align: center;
+    padding-top: 10px;
+    font-size: 0.85em;
+    color: var(--text-muted);
+    border-right: 1px solid var(--border-light);
+}
+
+/* Timeline Bars */
+.tl-bar-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+}
+
+.tl-bar {
+    position: absolute;
+    top: 6px;
+    height: 28px;
+    border-radius: 6px;
+    background: var(--primary);
+    color: white;
+    font-size: 0.75em;
+    line-height: 28px;
+    padding: 0 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: transform 0.2s;
+}
+
+.tl-bar:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    z-index: 10;
+}
+
+.tl-bar.subtask-bar {
+    background: var(--secondary);
+    top: 8px;
+    height: 24px;
+    line-height: 24px;
+    font-size: 0.7em;
+    opacity: 0.9;
+}
+
+.tl-bar.completed {
+    background: var(--success) !important;
+}
+
+.tl-bar.overdue {
+    background: var(--danger) !important;
+}
+
+/* Connectors */
+.tl-connector {
+    position: absolute;
+    border-left: 2px dashed var(--primary-light);
+    border-bottom: 2px dashed var(--primary-light);
+    border-bottom-left-radius: 8px;
+    width: 20px;
+    pointer-events: none;
+    z-index: 1;
+}
+
+</style>
+
+<div class="row mb-4">
+    <div class="col-12 d-flex justify-content-between align-items-center">
+        <h1>Project Timeline</h1>
+        <a href="{{ url_for('task_new') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> New Task
+        </a>
+    </div>
+</div>
+
+<div class="timeline-container">
+    <div class="timeline-left">
+        <div class="tl-header-row">
+            <div class="tl-header-cell-left">Tasks & Subtasks</div>
+        </div>
+        <div class="tl-body" id="left-pane" onscroll="syncScroll('left-pane', 'right-pane')">
+            <!-- Render Tasks and Subtasks -->
+            {% for task in tasks %}
+            <div class="tl-row-left task-group-{{ task.id }}" onclick="toggleSubtasks('{{ task.id }}')">
+                <span class="tl-toggle" id="toggle-icon-{{ task.id }}">
+                    <i class="bi bi-chevron-down"></i>
+                </span>
+                <i class="bi bi-list-task text-primary me-2"></i> {{ task.title }}
+            </div>
+                {% for step in task.get_steps() %}
+                <div class="tl-row-left is-subtask subtask-of-{{ task.id }}">
+                    <i class="bi bi-arrow-return-right text-muted me-2"></i> {{ step.title }}
+                </div>
+                {% endfor %}
+            {% else %}
+            <div class="p-4 text-muted text-center">No tasks to display</div>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="timeline-right">
+        <div class="tl-header-row" id="tl-header">
+            <!-- Generated via JS based on dates -->
+        </div>
+        <div class="tl-body" id="right-pane" onscroll="syncScroll('right-pane', 'left-pane')">
+            <div id="tl-grid">
+                <!-- Generated via JS -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Configuration
+    const CELL_WIDTH = 60; // px per day
+    const VISIBLE_DAYS = 60; // Total days to show in timeline
+    
+    // Calculate start date (7 days ago)
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 7);
+    startDate.setHours(0,0,0,0);
+    
+    // Data from Backend
+    const tasksData = [
+        {% for task in tasks %}
+        {
+            id: '{{ task.id }}',
+            title: '{{ task.title|replace("'", "\\'") }}',
+            start: '{{ task.start_date or task.created_at[:10] }}',
+            end: '{{ task.due_datetime[:10] if task.due_datetime else task.start_date or task.created_at[:10] }}',
+            status: '{{ task.status }}',
+            isSubtask: false
+        },
+            {% for step in task.get_steps() %}
+            {
+                id: '{{ step.id }}',
+                taskId: '{{ task.id }}',
+                title: '{{ step.title|replace("'", "\\'") }}',
+                start: '{{ step.start_datetime[:10] if step.start_datetime else task.start_date or task.created_at[:10] }}',
+                end: '{{ step.due_datetime[:10] if step.due_datetime else step.start_datetime[:10] if step.start_datetime else task.start_date or task.created_at[:10] }}',
+                status: '{{ step.status }}',
+                isSubtask: true
+            },
+            {% endfor %}
+        {% endfor %}
+    ];
+
+    document.addEventListener('DOMContentLoaded', function() {
+        renderHeader();
+        renderGrid();
+    });
+
+    function getDaysDiff(d1, d2) {
+        const diffTime = Math.abs(d2 - d1);
+        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    }
+
+    function renderHeader() {
+        const header = document.getElementById('tl-header');
+        let html = '';
+        for(let i = 0; i < VISIBLE_DAYS; i++) {
+            let d = new Date(startDate);
+            d.setDate(d.getDate() + i);
+            html += `<div class="tl-header-cell-right">${d.getDate()}/${d.getMonth()+1}</div>`;
+        }
+        header.innerHTML = html;
+    }
+
+    function renderGrid() {
+        const grid = document.getElementById('tl-grid');
+        let html = '';
+        
+        let bgCells = '';
+        for(let j = 0; j < VISIBLE_DAYS; j++) {
+            bgCells += `<div class="tl-grid-cell"></div>`;
+        }
+        
+        tasksData.forEach(item => {
+            const itemStart = new Date(item.start);
+            const itemEnd = new Date(item.end);
+            
+            // Adjust if end < start
+            if(itemEnd < itemStart) itemEnd.setTime(itemStart.getTime());
+            
+            let offsetDays = getDaysDiff(startDate, itemStart);
+            let durationDays = getDaysDiff(itemStart, itemEnd) + 1; // +1 to include the end day
+            
+            // If before timeline starts
+            if(itemStart < startDate) {
+                offsetDays = 0;
+                durationDays = getDaysDiff(startDate, itemEnd) + 1;
+            }
+            
+            let leftPx = offsetDays * CELL_WIDTH;
+            let widthPx = durationDays * CELL_WIDTH;
+            
+            // Cap width to grid
+            if(leftPx + widthPx > VISIBLE_DAYS * CELL_WIDTH) {
+                widthPx = (VISIBLE_DAYS * CELL_WIDTH) - leftPx;
+            }
+            
+            let barClass = item.isSubtask ? 'tl-bar subtask-bar subtask-of-' + item.taskId : 'tl-bar';
+            if(item.status === 'completed') barClass += ' completed';
+            
+            html += `
+            <div class="tl-grid-row ${item.isSubtask ? 'subtask-of-' + item.taskId : 'task-group-' + item.id}">
+                <div class="tl-grid-bg">${bgCells}</div>
+                <div class="tl-bar-container">`;
+                
+            if (leftPx >= 0 && widthPx > 0) {
+                html += `<div class="${barClass}" style="left: ${leftPx}px; width: ${widthPx}px;" title="${item.title}">${item.title}</div>`;
+            }
+            
+            html += `
+                </div>
+            </div>`;
+        });
+        
+        grid.innerHTML = html;
+        
+        // Sync scroll of header with body
+        const rightPane = document.getElementById('right-pane');
+        const header = document.getElementById('tl-header');
+        rightPane.addEventListener('scroll', function() {
+            header.scrollLeft = rightPane.scrollLeft;
+        });
+    }
+
+    function syncScroll(sourceId, targetId) {
+        document.getElementById(targetId).scrollTop = document.getElementById(sourceId).scrollTop;
+    }
+
+    function toggleSubtasks(taskId) {
+        const subtasks = document.querySelectorAll('.subtask-of-' + taskId);
+        const icon = document.getElementById('toggle-icon-' + taskId).querySelector('i');
+        
+        subtasks.forEach(el => {
+            if(el.style.display === 'none') {
+                el.style.display = 'flex'; // For left pane
+                if(el.classList.contains('tl-grid-row')) el.style.display = 'block'; // For right pane
+            } else {
+                el.style.display = 'none';
+            }
+        });
+        
+        if(icon.classList.contains('bi-chevron-down')) {
+            icon.classList.remove('bi-chevron-down');
+            icon.classList.add('bi-chevron-right');
+        } else {
+            icon.classList.remove('bi-chevron-right');
+            icon.classList.add('bi-chevron-down');
+        }
+    }
+</script>
+{% endblock %}
