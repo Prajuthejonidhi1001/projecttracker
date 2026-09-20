@@ -168,9 +168,14 @@ class Task(ExcelModel):
         if not self.due_date or self.status in ['completed', 'cancelled']:
             return False
         try:
-            due = datetime.fromisoformat(self.due_date)
+            import pandas as pd
+            if pd.isna(self.due_date): return False
+            if isinstance(self.due_date, str):
+                due = datetime.fromisoformat(str(self.due_date).split('.')[0][:19])
+            else:
+                due = self.due_date
             return due < datetime.now()
-        except ValueError:
+        except Exception:
             return False
 
     @property
@@ -178,10 +183,15 @@ class Task(ExcelModel):
         if not self.due_date or self.status in ['completed', 'cancelled']:
             return False
         try:
-            due = datetime.fromisoformat(self.due_date)
+            import pandas as pd
+            if pd.isna(self.due_date): return False
+            if isinstance(self.due_date, str):
+                due = datetime.fromisoformat(str(self.due_date).split('.')[0][:19])
+            else:
+                due = self.due_date
             now = datetime.now()
             return due > now and due <= (now + timedelta(days=2))
-        except ValueError:
+        except Exception:
             return False
 
 
