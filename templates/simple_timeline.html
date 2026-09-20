@@ -245,8 +245,8 @@
         {
             id: '{{ task.id }}',
             title: '{{ task.title|replace("'", "\\'") }}',
-            start: '{{ task.start_date or task.created_at[:10] }}',
-            end: '{{ task.due_datetime[:10] if task.due_datetime else task.start_date or task.created_at[:10] }}',
+            start: '{{ (task.start_date|string)[:10] if task.start_date and (task.start_date|string).lower() != "nan" else (task.created_at|string)[:10] }}',
+            end: '{{ (task.due_date|string)[:10] if task.due_date and (task.due_date|string).lower() != "nan" else ((task.start_date|string)[:10] if task.start_date and (task.start_date|string).lower() != "nan" else (task.created_at|string)[:10]) }}',
             status: '{{ task.status }}',
             isSubtask: false
         },
@@ -255,12 +255,13 @@
                 id: '{{ step.id }}',
                 taskId: '{{ task.id }}',
                 title: '{{ step.title|replace("'", "\\'") }}',
-                start: '{{ step.start_datetime[:10] if step.start_datetime else task.start_date or task.created_at[:10] }}',
-                end: '{{ step.due_datetime[:10] if step.due_datetime else step.start_datetime[:10] if step.start_datetime else task.start_date or task.created_at[:10] }}',
+                start: '{{ (step.start_datetime|string)[:10] if step.start_datetime and (step.start_datetime|string).lower() != "nan" else ((task.start_date|string)[:10] if task.start_date and (task.start_date|string).lower() != "nan" else (task.created_at|string)[:10]) }}',
+                end: '{{ (step.due_datetime|string)[:10] if step.due_datetime and (step.due_datetime|string).lower() != "nan" else ((task.due_date|string)[:10] if task.due_date and (task.due_date|string).lower() != "nan" else (task.created_at|string)[:10]) }}',
                 status: '{{ step.status }}',
                 isSubtask: true
-            },
+            }{% if not loop.last %},{% endif %}
             {% endfor %}
+        {% if not loop.last %},{% endif %}
         {% endfor %}
     ];
 
