@@ -215,8 +215,7 @@ def check_dependencies():
     print("Checking dependencies...")
 
     required_packages = {
-        'django': 'Django',
-        'rest_framework': 'djangorestframework',
+        'flask': 'Flask',
         'pandas': 'pandas',
         'openpyxl': 'openpyxl',
         'dotenv': 'python-dotenv'
